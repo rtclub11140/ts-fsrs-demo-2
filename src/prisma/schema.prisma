@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model Revlog {
+  lid               String   @id @unique @default(cuid())
+  cid               Int
+  grade             Rating
+  state             State
+  due               DateTime
+  stability         Float
+  difficulty        Float
+  elapsed_days      Int
+  last_elapsed_days Int
+  scheduled_days    Int
+  review            DateTime
+  card              Card     @relation(fields: [cid], references: [cid])
+
+  @@index([cid])
+}
+
+model Card {
+  cid            Int       @id @unique @default(autoincrement())
+  due            DateTime  @default(now())
+  stability      Float
+  difficulty     Float
+  elapsed_days   Int
+  scheduled_days Int
+  reps           Int
+  lapses         Int
+  state          State     @default(New)
+  last_review    DateTime?
+  nid            Int       @unique
+  note           Note      @relation(fields: [nid], references: [nid])
+  logs           Revlog[]
+}
+
+model Parameters {
+  uid               Int     @id @unique @default(autoincrement())
+  request_retention Float   @default(0.9)
+  maximum_interval  Int     @default(36500)
+  w                 Json
+  enable_fuzz       Boolean @default(false)
+  card_limit        Int     @default(50)
+  user              User?
+}
+
+model User {
+  uid       Int        @id @unique @default(autoincrement())
+  name      String     @unique
+  password  String
+  oauthId   String
+  oauthType String     @default("local")
+  email     String     @unique
+  notes     Note[]
+  params    Parameters @relation(fields: [uid], references: [uid])
+}
+
+model Note {
+  nid      Int    @id @unique @default(autoincrement())
+  uid      Int
+  question String @default("")
+  answer   String @default("")
+  source   String @default("")
+  extend   Json
+  card     Card?
+  user     User?  @relation(fields: [uid], references: [uid])
+
+  @@index([uid])
+}
+
+enum State {
+  New        @map("0")
+  Learning   @map("1")
+  Review     @map("2")
+  Relearning @map("3")
+}
+
+enum Rating {
+  Manual @map("0")
+  Again  @map("1")
+  Hard   @map("2")
+  Good   @map("3")
+  Easy   @map("4")
+}
